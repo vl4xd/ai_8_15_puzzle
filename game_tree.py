@@ -1,7 +1,7 @@
 from __future__ import annotations
 from game_node import GameNode
-import networkx as nx
-import matplotlib.pyplot as plt
+#import networkx as nx
+#import matplotlib.pyplot as plt
 
 class GameTree:
     """Объект дерева
@@ -31,6 +31,8 @@ class GameTree:
             h_value=0, 
             g_value=self.count_g_value(start_matrix),)
         self.root.f_value = self.count_f_value(self.root)
+        
+        self.__is_game_finished = False
     
     @property
     def goal(self):
@@ -39,6 +41,10 @@ class GameTree:
     @property
     def root(self):
         return self.__root
+    
+    @property
+    def is_game_finished(self):
+        return self.__is_game_finished
     
     @root.setter
     def root(self, root):
@@ -83,7 +89,7 @@ class GameTree:
         # https://ilyachalov.livejournal.com/176395.html
         memory = [self.root]    # память (стек)
                                 # в начале память содержит ссылку на корень заданного дерева
-        node_with_min_f_value = self.root # запоминаем узел с минимальным f_value
+        is_first_leaf = True # флаг для записи первого листа с минимальным f_value
         # внешний цикл, перебирающий линии заглублейний
         # закончить цикл, если не получается извлечь ссылку из памяти (стека)
         while memory:
@@ -91,14 +97,26 @@ class GameTree:
             # внутренний цикл обхода каждой линии заглубления дерева до листа
             while True:
                 # обработка данных узла...
+                # если находим необработанное завершение игры
+                if cur_ref == self.goal:
+                    self.__is_game_finished = True # переопределяем флаг завершения
+                
                 if cur_ref.g_value is None:
                     cur_ref.g_value = self.count_g_value(cur_ref.matrix)
                 if cur_ref.f_value is None:
                     cur_ref.f_value = self.count_f_value(cur_ref)
-                    
+                
+                if not cur_ref.c_nodes and is_first_leaf:
+                    # запоминаем первый встреченный лист с минимальным f_value для последующего сравнения
+                    node_with_min_f_value = cur_ref
+                    # устанавливаем флаг проверки первого листа
+                    is_first_leaf = not is_first_leaf
+                
                 # если значение f текущего узла меньше или равно f записанного узла и
                 # если текущий узел - это лист
-                if cur_ref.f_value <= node_with_min_f_value.f_value and not cur_ref.c_nodes:
+                if (not cur_ref.c_nodes and
+                    not is_first_leaf and
+                    cur_ref.f_value <= node_with_min_f_value.f_value):
                     node_with_min_f_value = cur_ref # запоминаем ссылку на текущий узел
                 
                 # если узел - это лист, выйти из цикла
@@ -112,6 +130,9 @@ class GameTree:
 
                 # переходим по ветви, ведущей направо
                 cur_ref = cur_ref.c_nodes[-1]
+            
+            if self.__is_game_finished:
+                break
             
         return node_with_min_f_value    
     
@@ -193,12 +214,40 @@ class GameTree:
         best_f_value_node.c_nodes = next_nodes
         # проверяем: есть ли среди новых узлов решающий
         game_finished_node = None
+        
+        # для корректной работы в случаи совпадения начальной и целевой матриц
+        if self.__is_game_finished and best_f_value_node == self.goal:
+            return best_f_value_node
+        
         for next_node in next_nodes:
             if next_node == self.goal:
                 game_finished_node = next_node
+                self.__is_game_finished = True # переопределяем флаг завершения
                 break
         return game_finished_node
     
+    def do_next_move(self) -> bool:
+        """Сделать следующий шаг
+
+        Returns:
+            bool: True - шаг сделан, False - целевая матрица достигнута
+        """        
+        final_node = self.generate_next_nodes(self.search_min_f_value_node())
+        
+        if final_node is not None:
+            print("-----\n" +
+                  f"Целевая матрица {self.goal.matrix}\n" + 
+                  "-----\n"
+                  f"Полученная матрица {final_node.matrix}\n" +
+                  f"Ход (h_value): \t{final_node.h_value}\n" +
+                  f"Кол-во значений не на своем месте (g_value): \t{final_node.g_value}\n" +
+                  "-----")
+         
+        if self.__is_game_finished:
+            print("Система завершила свою работу: целевая матрица достигнута")
+            return False      
+        
+        return True
     
     def show_game_tree(self) -> None:
         pass

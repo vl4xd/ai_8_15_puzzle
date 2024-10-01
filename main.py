@@ -17,7 +17,7 @@ start_matrix = [
 
 game_ai = GameTree(goal_matrix=goal_matrix, 
                    start_matrix=start_matrix)
-
+'''
 node3 = GameNode(
     matrix=[[2, 4, 3],
             [1, 8, 5],
@@ -50,10 +50,11 @@ node0 = GameNode(
     h_value=5,
     g_value=2,
     el_move=5)
-
+'''
 #game_ai.root.c_nodes.append(node1)
 #game_ai.root.c_nodes.append(node2)
 #game_ai.root.c_nodes.append(node3)
 
-
-print(game_ai.generate_next_nodes(node0).matrix)
+flag = True
+while(flag):
+    flag = game_ai.do_next_move()
